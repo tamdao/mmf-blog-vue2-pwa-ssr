@@ -95,26 +95,32 @@ exports.getItem = async (req, res) => {
 }
 
 exports.getTrending = (req, res) => {
-    const limit = 5
-    const data = { is_delete: 0 }
-    const filds = 'title visit like comment_count'
-    Article.find(data, filds)
-        .sort('-visit')
-        .limit(limit)
-        .exec()
-        .then(result => {
-            const json = {
-                code: 200,
-                data: {
-                    list: result
-                }
-            }
-            res.json(json)
-        })
-        .catch(err => {
-            res.json({
-                code: -200,
-                message: err.toString()
-            })
-        })
+    res.json({
+        code: 200,
+        data: {
+            list: []
+        }
+    })
+    // const limit = 5
+    // const data = { is_delete: 0 }
+    // const filds = 'title visit like comment_count'
+    // Article.find(data, filds)
+    //     .sort('-visit')
+    //     .limit(limit)
+    //     .exec()
+    //     .then(result => {
+    //         const json = {
+    //             code: 200,
+    //             data: {
+    //                 list: result
+    //             }
+    //         }
+    //         res.json(json)
+    //     })
+    //     .catch(err => {
+    //         res.json({
+    //             code: -200,
+    //             message: err.toString()
+    //         })
+    //     })
 }
