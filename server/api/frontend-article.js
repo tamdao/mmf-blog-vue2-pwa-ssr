@@ -109,7 +109,18 @@ exports.getTrending = async (req, res) => {
     res.json({
         code: 200,
         data: {
-            list: articles
+            list: _.map(articles, article => {
+                return {
+                    _id: article.id,
+                    update_date: moment(article.created).format('YYYY-MM-DD HH:mm:ss'),
+                    category_name: article.topic.title,
+                    timestamp: article.created,
+                    content: article.teaser,
+                    comment_count: article.comment,
+                    visit: article.view,
+                    ...article
+                }
+            })
         }
     })
 }
