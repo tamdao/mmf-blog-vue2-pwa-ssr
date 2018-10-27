@@ -6,7 +6,8 @@
 // )
 // mongoose.Promise = global.Promise
 module.exports = {
-    Schema() {},
+    /* eslint-disable */
+    Schema: function() {},
     model() {
         return function() {}
     }
