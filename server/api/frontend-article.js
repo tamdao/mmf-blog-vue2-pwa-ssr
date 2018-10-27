@@ -1,8 +1,6 @@
 const request = require('request-promise')
 const _ = require('lodash')
 const moment = require('moment')
-const mongoose = require('../mongoose')
-const Article = mongoose.model('Article')
 
 /**
  * 前台浏览时, 获取文章列表
@@ -68,9 +66,11 @@ exports.getItem = async (req, res) => {
             message: '参数错误'
         })
     }
+    console.log('req.query.id', req.query.id, req.query)
     const article = await request.get(`http://45.32.124.158/v/1/ds/article/item/${_id}`, {
         json: true
     })
+    console.log('article', article)
     res.json({
         code: 200,
         data: {
@@ -94,33 +94,22 @@ exports.getItem = async (req, res) => {
     })
 }
 
-exports.getTrending = (req, res) => {
+exports.getTrending = async (req, res) => {
+    const limit = 5
+    const qs = {
+        offset: 0 * limit,
+        items: limit,
+        queue: 'hot'
+    }
+    console.log('qs', qs)
+    const articles = await request.get('http://45.32.124.158/v/1/ds/article/ls', {
+        qs,
+        json: true
+    })
     res.json({
         code: 200,
         data: {
-            list: []
+            list: articles
         }
     })
-    // const limit = 5
-    // const data = { is_delete: 0 }
-    // const filds = 'title visit like comment_count'
-    // Article.find(data, filds)
-    //     .sort('-visit')
-    //     .limit(limit)
-    //     .exec()
-    //     .then(result => {
-    //         const json = {
-    //             code: 200,
-    //             data: {
-    //                 list: result
-    //             }
-    //         }
-    //         res.json(json)
-    //     })
-    //     .catch(err => {
-    //         res.json({
-    //             code: -200,
-    //             message: err.toString()
-    //         })
-    //     })
 }

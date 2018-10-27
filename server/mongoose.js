@@ -5,6 +5,7 @@
 //     { useNewUrlParser: true }
 // )
 // mongoose.Promise = global.Promise
+// module.exports = mongoose
 module.exports = {
     /* eslint-disable */
     Schema: function() {},
