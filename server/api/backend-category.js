@@ -1,4 +1,7 @@
+const request = require('request-promise')
+const _ = require('lodash')
 const moment = require('moment')
+
 const mongoose = require('../mongoose')
 const Category = mongoose.model('Category')
 const general = require('./general')
@@ -12,25 +15,23 @@ const { item, modify, deletes, recover } = general
  * @param  {[type]} res [description]
  * @return {[type]}     [description]
  */
-exports.getList = (req, res) => {
-    Category.find()
-        .sort('-cate_order')
-        .exec()
-        .then(result => {
-            const json = {
-                code: 200,
-                data: {
-                    list: result
+exports.getList = async (req, res) => {
+    const categories = await request('http://45.32.124.158/v/1/ds/topic/ls', {
+        json: true
+    })
+    const json = {
+        code: 200,
+        data: {
+            list: _.map(categories, category => {
+                return {
+                    _id: category.slug,
+                    cate_name: category.title,
+                    ...category
                 }
-            }
-            res.json(json)
-        })
-        .catch(err => {
-            res.json({
-                code: -200,
-                message: err.toString()
             })
-        })
+        }
+    }
+    res.json(json)
 }
 
 exports.getItem = (req, res) => {

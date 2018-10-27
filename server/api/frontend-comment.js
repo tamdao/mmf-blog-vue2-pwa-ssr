@@ -1,3 +1,5 @@
+const request = require('request-promise')
+const _ = require('lodash')
 const moment = require('moment')
 
 const mongoose = require('../mongoose')
@@ -71,8 +73,8 @@ exports.insert = (req, res) => {
  * @param  {[type]} res [description]
  * @return {[type]}     [description]
  */
-exports.getList = (req, res) => {
-    const { all, id } = req.query
+exports.getList = async (req, res) => {
+    const { id } = req.query
     let { limit, page } = req.query
     if (!id) {
         res.json({
@@ -84,40 +86,59 @@ exports.getList = (req, res) => {
         limit = parseInt(limit, 10)
         if (!page) page = 1
         if (!limit) limit = 10
-        const data = {
-                article_id: id
-            },
-            skip = (page - 1) * limit
-        if (!all) {
-            data.is_delete = 0
+        const comments = await request.get(`http://45.32.124.158/v/1/ds/comment/ls/${id}`, {
+            json: true
+        })
+        const json = {
+            code: 200,
+            data: {
+                hasNext: false
+            }
         }
-        Promise.all([
-            Comment.find(data)
-                .sort('-_id')
-                .skip(skip)
-                .limit(limit)
-                .exec(),
-            Comment.countDocumentsAsync(data)
-        ])
-            .then(result => {
-                const total = result[1]
-                const totalPage = Math.ceil(total / limit)
-                const json = {
-                    code: 200,
-                    data: {
-                        list: result[0],
-                        total,
-                        hasNext: totalPage > page ? 1 : 0
-                    }
-                }
-                res.json(json)
-            })
-            .catch(err => {
-                res.json({
-                    code: -200,
-                    message: err.toString()
-                })
-            })
+        json.data.list = _.map(comments, comment => {
+            return {
+                _id: comment.id,
+                username: comment.name,
+                creat_date: comment.created,
+                avatar: comment.img,
+                ...comment
+            }
+        })
+        res.json(json)
+        // const data = {
+        //         article_id: id
+        //     },
+        //     skip = (page - 1) * limit
+        // if (!all) {
+        //     data.is_delete = 0
+        // }
+        // Promise.all([
+        //     Comment.find(data)
+        //         .sort('-_id')
+        //         .skip(skip)
+        //         .limit(limit)
+        //         .exec(),
+        //     Comment.countDocumentsAsync(data)
+        // ])
+        //     .then(result => {
+        //         const total = result[1]
+        //         const totalPage = Math.ceil(total / limit)
+        //         const json = {
+        //             code: 200,
+        //             data: {
+        //                 list: result[0],
+        //                 total,
+        //                 hasNext: totalPage > page ? 1 : 0
+        //             }
+        //         }
+        //         res.json(json)
+        //     })
+        //     .catch(err => {
+        //         res.json({
+        //             code: -200,
+        //             message: err.toString()
+        //         })
+        //     })
     }
 }
 

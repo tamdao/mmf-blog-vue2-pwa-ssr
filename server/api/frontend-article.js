@@ -1,3 +1,6 @@
+const request = require('request-promise')
+const _ = require('lodash')
+const moment = require('moment')
 const mongoose = require('../mongoose')
 const Article = mongoose.model('Article')
 
@@ -8,77 +11,44 @@ const Article = mongoose.model('Article')
  * @param  {[type]} res [description]
  * @return {[type]}     [description]
  */
-exports.getList = (req, res) => {
-    const { by, id, key } = req.query
+exports.getList = async (req, res) => {
+    const { id } = req.query
     let { limit, page } = req.query
     page = parseInt(page, 10)
     limit = parseInt(limit, 10)
     if (!page) page = 1
     if (!limit) limit = 10
-    const data = {
-            is_delete: 0
-        },
-        skip = (page - 1) * limit
-    if (id) {
-        data.category = id
+    const json = {
+        code: 200,
+        data: {
+            total: 10000,
+            hasNext: 1,
+            hasPrev: page > 1
+        }
     }
-    if (key) {
-        const reg = new RegExp(key, 'i')
-        data.title = { $regex: reg }
+    const qs = {
+        offset: (page - 1) * limit,
+        items: limit,
+        topic: id
     }
-    let sort = '-update_date'
-    if (by) {
-        sort = '-' + by
-    }
-
-    const filds =
-        'title content category category_name visit like likes comment_count creat_date update_date is_delete timestamp'
-
-    Promise.all([
-        Article.find(data, filds)
-            .sort(sort)
-            .skip(skip)
-            .limit(limit)
-            .exec(),
-        Article.countDocumentsAsync(data)
-    ])
-        .then(([data, total]) => {
-            const totalPage = Math.ceil(total / limit)
-            const user_id = req.cookies.userid || req.headers.userid
-            const json = {
-                code: 200,
-                data: {
-                    total,
-                    hasNext: totalPage > page ? 1 : 0,
-                    hasPrev: page > 1
-                }
-            }
-            if (user_id) {
-                data = data.map(item => {
-                    item._doc.like_status = item.likes && item.likes.indexOf(user_id) > -1
-                    item.content = item.content.substring(0, 500) + '...'
-                    item.likes = []
-                    return item
-                })
-                json.data.list = data
-                res.json(json)
-            } else {
-                data = data.map(item => {
-                    item._doc.like_status = false
-                    item.content = item.content.substring(0, 500) + '...'
-                    item.likes = []
-                    return item
-                })
-                json.data.list = data
-                res.json(json)
-            }
-        })
-        .catch(err => {
-            res.json({
-                code: -200,
-                message: err.toString()
-            })
-        })
+    console.log('qs', qs)
+    const articles = await request.get('http://45.32.124.158/v/1/ds/article/ls', {
+        qs,
+        json: true
+    })
+    json.data.list = _.map(articles, article => {
+        return {
+            _id: article.id,
+            update_date: moment(article.created).format('YYYY-MM-DD HH:mm:ss'),
+            category_name: article.topic.title,
+            timestamp: article.created,
+            content: article.teaser,
+            comment_count: article.comment,
+            visit: article.view,
+            ...article
+        }
+    })
+    res.json(json)
 }
 
 /**
@@ -89,7 +59,7 @@ exports.getList = (req, res) => {
  * @return {[type]}     [description]
  */
 
-exports.getItem = (req, res) => {
+exports.getItem = async (req, res) => {
     const _id = req.query.id
     const user_id = req.cookies.userid || req.headers.userid
     if (!_id) {
@@ -98,31 +68,30 @@ exports.getItem = (req, res) => {
             message: '参数错误'
         })
     }
-    Promise.all([Article.findOneAsync({ _id, is_delete: 0 }), Article.updateOneAsync({ _id }, { $inc: { visit: 1 } })])
-        .then(value => {
-            let json
-            if (!value[0]) {
-                json = {
-                    code: -200,
-                    message: '没有找到该文章'
+    const article = await request.get(`http://45.32.124.158/v/1/ds/article/item/${_id}`, {
+        json: true
+    })
+    res.json({
+        code: 200,
+        data: {
+            _id: article.id,
+            update_date: moment(article.created).format('YYYY-MM-DD HH:mm:ss'),
+            category_name: article.domain,
+            timestamp: article.created,
+            content: article.teaser,
+            comment_count: article.comment,
+            visit: article.view,
+            html: _.map(article.paragraph, p => {
+                const content = []
+                if (p.photo) {
+                    content.push(`<div style="text-align: center"><img src="${p.photo}" alt="${p.title}" /></div>`)
                 }
-            } else {
-                if (user_id) value[0]._doc.like_status = value[0].likes && value[0].likes.indexOf(user_id) > -1
-                else value[0]._doc.like_status = false
-                value[0].likes = []
-                json = {
-                    code: 200,
-                    data: value[0]
-                }
-            }
-            res.json(json)
-        })
-        .catch(err => {
-            res.json({
-                code: -200,
-                message: err.toString()
-            })
-        })
+                content.push(p.passage)
+                return content.join('')
+            }).join(''),
+            ...article
+        }
+    })
 }
 
 exports.getTrending = (req, res) => {
